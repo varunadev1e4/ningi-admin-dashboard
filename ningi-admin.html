@@ -6,22 +6,51 @@
 <title>Ningi Admin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Nunito+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+// ═══════════════════════════════════════════════════════
+// THEME
+// ═══════════════════════════════════════════════════════
+function toggleTheme() {
+  const isDark = document.documentElement.classList.contains('dark')
+  if (isDark) {
+    document.documentElement.classList.remove('dark')
+    sessionStorage.setItem('ningi_admin_theme', 'light')
+    document.getElementById('theme-icon').textContent = '☀'
+    document.getElementById('theme-label').textContent = 'Light mode'
+  } else {
+    document.documentElement.classList.add('dark')
+    sessionStorage.setItem('ningi_admin_theme', 'dark')
+    document.getElementById('theme-icon').textContent = '☾'
+    document.getElementById('theme-label').textContent = 'Dark mode'
+  }
+}
+
+// Apply saved theme on load
+;(function() {
+  const saved = sessionStorage.getItem('ningi_admin_theme') || 'dark'
+  if (saved === 'dark') {
+    document.documentElement.classList.add('dark')
+    document.addEventListener('DOMContentLoaded', () => {
+      const icon = document.getElementById('theme-icon')
+      const label = document.getElementById('theme-label')
+      if (icon) icon.textContent = '☾'
+      if (label) label.textContent = 'Dark mode'
+    })
+  }
+})()
+
+</script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+  /* ── Brand tokens ── */
   :root {
-    --bg:          #080909;
-    --bg2:         #0f1011;
-    --bg3:         #161819;
-    --border:      rgba(255,255,255,0.07);
-    --border2:     rgba(255,255,255,0.12);
-    --text:        #e8e9ea;
-    --text2:       #9a9da0;
-    --text3:       #5c5f63;
     --primary:     #FF3D00;
-    --primary-dim: rgba(255,61,0,0.15);
+    --primary-dim: rgba(255,61,0,0.12);
+    --sky:         #06558D;
+    --sky-light:   #D6EAF2;
+    --sky-gradient:linear-gradient(135deg, #06558D 0%, #D6EAF2 100%);
     --green:       #22c55e;
     --green-dim:   rgba(34,197,94,0.12);
     --amber:       #f59e0b;
@@ -32,10 +61,34 @@
     --blue-dim:    rgba(59,130,246,0.12);
     --radius:      8px;
     --mono:        'DM Mono', monospace;
-    --sans:        'Outfit', sans-serif;
+    --sans:        'Nunito Sans', 'Outfit', sans-serif;
   }
 
-  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; }
+  /* ── Light theme (default) ── */
+  :root {
+    --bg:    #FFFFFF;
+    --bg2:   #F5F5F7;
+    --bg3:   #EBEBED;
+    --border:  rgba(0,0,0,0.08);
+    --border2: rgba(0,0,0,0.14);
+    --text:  #0A0A0B;
+    --text2: #444446;
+    --text3: #88888A;
+  }
+
+  /* ── Dark theme ── */
+  html.dark {
+    --bg:    #0A0A0B;
+    --bg2:   #111213;
+    --bg3:   #1A1B1D;
+    --border:  rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text:  #F0F0F2;
+    --text2: #AAAAAC;
+    --text3: #66666A;
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; transition: background 0.2s, color 0.2s; }
 
   /* ── Auth gate ─────────────────────────────────────────────── */
   #auth-gate {
@@ -55,7 +108,7 @@
   }
   .auth-logo-mark {
     width: 36px; height: 36px;
-    background: var(--primary); border-radius: 10px;
+    background: var(--sky-gradient); border-radius: 10px;
     display: flex; align-items: center; justify-content: center;
     font-size: 18px; font-weight: 900; color: #fff;
   }
@@ -114,7 +167,7 @@
   }
   .sidebar-logo-mark {
     width: 28px; height: 28px;
-    background: var(--primary); border-radius: 8px;
+    background: var(--sky-gradient); border-radius: 8px;
     display: flex; align-items: center; justify-content: center;
     font-size: 13px; font-weight: 900; color: #fff;
   }
@@ -152,7 +205,7 @@
   }
   .sidebar-avatar {
     width: 28px; height: 28px; border-radius: 50%;
-    background: var(--primary); color: #fff;
+    background: var(--sky-gradient); color: #fff;
     display: flex; align-items: center; justify-content: center;
     font-size: 11px; font-weight: 700; flex-shrink: 0;
   }
@@ -382,6 +435,31 @@
   }
   .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .page-btn:not(:disabled):hover { border-color: var(--primary); color: var(--primary); }
+
+  /* ── Theme toggle ── */
+  .theme-toggle {
+    display: flex; align-items: center; gap: 8px;
+    width: 100%; padding: 8px 10px; border-radius: var(--radius);
+    border: 1px solid var(--border); background: var(--bg3);
+    cursor: pointer; color: var(--text2); font-size: 12px; font-weight: 500;
+    transition: all 0.12s; font-family: var(--sans);
+  }
+  .theme-toggle:hover { border-color: var(--primary); color: var(--primary); }
+  #theme-icon { font-size: 14px; }
+
+  /* ── Sidebar sky accent ── */
+  .sidebar-section-label { color: var(--text3); }
+  .nav-item.active { background: var(--primary-dim); color: var(--primary); }
+
+  /* ── Top bar sky gradient accent ── */
+  .topbar { border-bottom: 2px solid; border-image: linear-gradient(90deg, #06558D, #D6EAF2) 1; }
+  html.dark .topbar { border-image: linear-gradient(90deg, rgba(6,85,141,0.6), rgba(214,234,242,0.2)) 1; }
+
+  /* Light mode table */
+  html:not(.dark) table thead { background: var(--bg2); }
+  html:not(.dark) .table-wrap { box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  html:not(.dark) .modal { box-shadow: 0 8px 32px rgba(0,0,0,0.12); }
+  html:not(.dark) .auth-card { box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
 </style>
 </head>
 <body>
@@ -439,7 +517,11 @@
     </div>
 
     <div class="sidebar-bottom">
-      <div class="sidebar-user">
+      <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+        <span id="theme-icon">☀</span>
+        <span id="theme-label">Light mode</span>
+      </button>
+      <div class="sidebar-user" style="margin-top:8px">
         <div class="sidebar-avatar" id="sidebar-avatar">A</div>
         <div class="sidebar-user-name" id="sidebar-username">Admin</div>
         <button class="sidebar-logout" onclick="logout()" title="Disconnect">⏻</button>
@@ -1031,6 +1113,39 @@ function escHtml(str) {
   if (!str) return ''
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
 }
+
+// ═══════════════════════════════════════════════════════
+// THEME
+// ═══════════════════════════════════════════════════════
+function toggleTheme() {
+  const isDark = document.documentElement.classList.contains('dark')
+  if (isDark) {
+    document.documentElement.classList.remove('dark')
+    sessionStorage.setItem('ningi_admin_theme', 'light')
+    document.getElementById('theme-icon').textContent = '☀'
+    document.getElementById('theme-label').textContent = 'Light mode'
+  } else {
+    document.documentElement.classList.add('dark')
+    sessionStorage.setItem('ningi_admin_theme', 'dark')
+    document.getElementById('theme-icon').textContent = '☾'
+    document.getElementById('theme-label').textContent = 'Dark mode'
+  }
+}
+
+// Apply saved theme on load
+;(function() {
+  const saved = sessionStorage.getItem('ningi_admin_theme') || 'dark'
+  if (saved === 'dark') {
+    document.documentElement.classList.add('dark')
+    document.addEventListener('DOMContentLoaded', () => {
+      const icon = document.getElementById('theme-icon')
+      const label = document.getElementById('theme-label')
+      if (icon) icon.textContent = '☾'
+      if (label) label.textContent = 'Dark mode'
+    })
+  }
+})()
+
 </script>
 </body>
 </html>
