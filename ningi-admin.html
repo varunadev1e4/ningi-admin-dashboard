@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ningi Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:          #080909;
+    --bg2:         #0f1011;
+    --bg3:         #161819;
+    --border:      rgba(255,255,255,0.07);
+    --border2:     rgba(255,255,255,0.12);
+    --text:        #e8e9ea;
+    --text2:       #9a9da0;
+    --text3:       #5c5f63;
+    --primary:     #FF3D00;
+    --primary-dim: rgba(255,61,0,0.15);
+    --green:       #22c55e;
+    --green-dim:   rgba(34,197,94,0.12);
+    --amber:       #f59e0b;
+    --amber-dim:   rgba(245,158,11,0.12);
+    --red:         #ef4444;
+    --red-dim:     rgba(239,68,68,0.12);
+    --blue:        #3b82f6;
+    --blue-dim:    rgba(59,130,246,0.12);
+    --radius:      8px;
+    --mono:        'DM Mono', monospace;
+    --sans:        'Outfit', sans-serif;
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; }
+
+  /* ── Auth gate ─────────────────────────────────────────────── */
+  #auth-gate {
+    position: fixed; inset: 0; z-index: 100;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .auth-card {
+    width: 420px;
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 16px;
+    padding: 36px 32px;
+  }
+  .auth-logo {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 28px;
+  }
+  .auth-logo-mark {
+    width: 36px; height: 36px;
+    background: var(--primary); border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 900; color: #fff;
+  }
+  .auth-logo-text { font-size: 18px; font-weight: 600; }
+  .auth-logo-badge {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+    background: var(--primary-dim); color: var(--primary);
+    padding: 2px 7px; border-radius: 4px; text-transform: uppercase;
+  }
+  .auth-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+  .auth-sub   { font-size: 13px; color: var(--text2); margin-bottom: 24px; line-height: 1.5; }
+  .field-label { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text3); margin-bottom: 6px; display: block; }
+  .field-input {
+    width: 100%; padding: 10px 12px;
+    background: var(--bg3); border: 1px solid var(--border2);
+    border-radius: var(--radius); color: var(--text);
+    font-family: var(--mono); font-size: 12px;
+    outline: none; transition: border-color 0.15s;
+    margin-bottom: 14px;
+  }
+  .field-input:focus { border-color: var(--primary); }
+  .auth-btn {
+    width: 100%; padding: 12px;
+    background: var(--primary); border: none; border-radius: var(--radius);
+    color: #fff; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: opacity 0.15s;
+    font-family: var(--sans);
+  }
+  .auth-btn:hover { opacity: 0.88; }
+  .auth-error {
+    margin-top: 12px; padding: 10px 12px;
+    background: var(--red-dim); border: 1px solid rgba(239,68,68,0.25);
+    border-radius: var(--radius); color: var(--red); font-size: 12px;
+    display: none;
+  }
+  .auth-hint {
+    margin-top: 14px; font-size: 11px; color: var(--text3); line-height: 1.6;
+  }
+  .auth-hint a { color: var(--primary); text-decoration: none; }
+
+  /* ── Shell ─────────────────────────────────────────────────── */
+  #shell { display: none; height: 100vh; overflow: hidden; }
+  #shell.visible { display: flex; }
+
+  /* ── Sidebar ───────────────────────────────────────────────── */
+  .sidebar {
+    width: 220px; flex-shrink: 0;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 20px 14px;
+  }
+  .sidebar-logo {
+    display: flex; align-items: center; gap: 9px;
+    padding: 0 4px; margin-bottom: 28px;
+  }
+  .sidebar-logo-mark {
+    width: 28px; height: 28px;
+    background: var(--primary); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 900; color: #fff;
+  }
+  .sidebar-logo-name { font-size: 15px; font-weight: 700; }
+  .sidebar-logo-tag  { font-size: 9px; color: var(--primary); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+
+  .sidebar-section-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--text3); padding: 0 8px; margin-bottom: 6px; margin-top: 16px;
+  }
+  .sidebar-nav { display: flex; flex-direction: column; gap: 2px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px; border-radius: var(--radius);
+    cursor: pointer; color: var(--text2); font-size: 13px; font-weight: 500;
+    transition: background 0.12s, color 0.12s;
+    border: none; background: transparent; width: 100%; text-align: left;
+    font-family: var(--sans);
+  }
+  .nav-item:hover { background: var(--bg3); color: var(--text); }
+  .nav-item.active { background: var(--primary-dim); color: var(--primary); }
+  .nav-item .nav-icon { font-size: 15px; width: 18px; text-align: center; }
+  .nav-badge {
+    margin-left: auto; min-width: 18px; height: 18px; padding: 0 5px;
+    background: var(--primary); color: #fff;
+    border-radius: 9px; font-size: 10px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .sidebar-bottom { margin-top: auto; }
+  .sidebar-user {
+    display: flex; align-items: center; gap: 9px;
+    padding: 10px; border-radius: var(--radius);
+    background: var(--bg3); border: 1px solid var(--border);
+  }
+  .sidebar-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--primary); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; flex-shrink: 0;
+  }
+  .sidebar-user-name { font-size: 12px; font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sidebar-logout {
+    background: none; border: none; cursor: pointer; color: var(--text3); font-size: 14px;
+    padding: 2px; transition: color 0.12s;
+  }
+  .sidebar-logout:hover { color: var(--red); }
+
+  /* ── Main ──────────────────────────────────────────────────── */
+  .main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 28px 14px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    position: sticky; top: 0; z-index: 10;
+    background: var(--bg);
+  }
+  .topbar-title { font-size: 20px; font-weight: 700; }
+  .topbar-sub   { font-size: 12px; color: var(--text2); margin-top: 1px; }
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+
+  .refresh-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 12px;
+    background: var(--bg3); border: 1px solid var(--border2);
+    border-radius: var(--radius); cursor: pointer;
+    color: var(--text2); font-size: 12px; font-weight: 500;
+    transition: all 0.12s; font-family: var(--sans);
+  }
+  .refresh-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+  .content { padding: 24px 28px; flex: 1; }
+
+  /* ── Stat cards ─────────────────────────────────────────────── */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
+  .stat-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 20px;
+  }
+  .stat-label { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text3); margin-bottom: 10px; }
+  .stat-value { font-size: 32px; font-weight: 700; font-family: var(--mono); line-height: 1; margin-bottom: 6px; }
+  .stat-sub   { font-size: 11px; color: var(--text2); }
+  .stat-card.danger .stat-value { color: var(--red); }
+  .stat-card.warn   .stat-value { color: var(--amber); }
+  .stat-card.ok     .stat-value { color: var(--green); }
+
+  /* ── Section header ─────────────────────────────────────────── */
+  .section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .section-title { font-size: 15px; font-weight: 600; }
+  .section-controls { display: flex; align-items: center; gap: 8px; }
+
+  /* ── Filter tabs ────────────────────────────────────────────── */
+  .filter-tabs { display: flex; gap: 4px; }
+  .filter-tab {
+    padding: 5px 12px; border-radius: 6px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text2); font-size: 12px; font-weight: 500;
+    cursor: pointer; transition: all 0.12s; font-family: var(--sans);
+  }
+  .filter-tab:hover { border-color: var(--border2); color: var(--text); }
+  .filter-tab.active { background: var(--primary-dim); border-color: var(--primary); color: var(--primary); }
+
+  /* ── Search input ───────────────────────────────────────────── */
+  .search-input {
+    padding: 7px 12px; border-radius: var(--radius);
+    background: var(--bg3); border: 1px solid var(--border2);
+    color: var(--text); font-size: 12px; width: 220px; outline: none;
+    font-family: var(--sans); transition: border-color 0.15s;
+  }
+  .search-input:focus { border-color: var(--primary); }
+  .search-input::placeholder { color: var(--text3); }
+
+  /* ── Table ──────────────────────────────────────────────────── */
+  .table-wrap {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  thead { border-bottom: 1px solid var(--border); }
+  th {
+    padding: 10px 14px; text-align: left;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text3); background: var(--bg2);
+    white-space: nowrap;
+  }
+  td {
+    padding: 11px 14px;
+    font-size: 13px; color: var(--text);
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.015); }
+  .mono { font-family: var(--mono); font-size: 12px; }
+  .text-muted { color: var(--text2); }
+  .text-sm { font-size: 12px; }
+  .truncate { max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+
+  /* ── Badges ─────────────────────────────────────────────────── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+  .badge-pending   { background: var(--amber-dim); color: var(--amber); }
+  .badge-reviewed  { background: var(--blue-dim);  color: var(--blue); }
+  .badge-resolved  { background: var(--green-dim); color: var(--green); }
+  .badge-dismissed { background: var(--bg3); color: var(--text3); }
+  .badge-banned    { background: var(--red-dim); color: var(--red); }
+  .badge-timeout   { background: var(--amber-dim); color: var(--amber); }
+  .badge-active    { background: var(--green-dim); color: var(--green); }
+  .badge-user      { background: var(--blue-dim); color: var(--blue); }
+  .badge-message   { background: var(--primary-dim); color: var(--primary); }
+
+  /* ── Action buttons ─────────────────────────────────────────── */
+  .actions { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 10px; border-radius: 6px; border: 1px solid;
+    font-size: 11px; font-weight: 600; cursor: pointer;
+    transition: all 0.12s; font-family: var(--sans); white-space: nowrap;
+  }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-red    { background: var(--red-dim);   border-color: rgba(239,68,68,0.3);  color: var(--red); }
+  .btn-red:not(:disabled):hover    { background: rgba(239,68,68,0.25); }
+  .btn-amber  { background: var(--amber-dim); border-color: rgba(245,158,11,0.3); color: var(--amber); }
+  .btn-amber:not(:disabled):hover  { background: rgba(245,158,11,0.25); }
+  .btn-green  { background: var(--green-dim); border-color: rgba(34,197,94,0.3);  color: var(--green); }
+  .btn-green:not(:disabled):hover  { background: rgba(34,197,94,0.25); }
+  .btn-ghost  { background: var(--bg3); border-color: var(--border2); color: var(--text2); }
+  .btn-ghost:not(:disabled):hover  { border-color: var(--border2); color: var(--text); }
+  .btn-primary{ background: var(--primary-dim); border-color: rgba(255,61,0,0.3); color: var(--primary); }
+  .btn-primary:not(:disabled):hover{ background: rgba(255,61,0,0.25); }
+
+  /* ── Empty / Loading ────────────────────────────────────────── */
+  .empty-state {
+    padding: 48px; text-align: center; color: var(--text3);
+    font-size: 13px;
+  }
+  .loading-row td { text-align: center; color: var(--text3); padding: 32px; }
+
+  /* ── Modal ──────────────────────────────────────────────────── */
+  .modal-backdrop {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    display: none;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--bg2); border: 1px solid var(--border2);
+    border-radius: 14px; width: 480px; max-height: 80vh;
+    overflow-y: auto; padding: 24px;
+  }
+  .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+  .modal-field { margin-bottom: 14px; }
+  .modal-label { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text3); margin-bottom: 6px; }
+  .modal-input {
+    width: 100%; padding: 9px 12px;
+    background: var(--bg3); border: 1px solid var(--border2);
+    border-radius: var(--radius); color: var(--text); font-size: 13px;
+    outline: none; font-family: var(--sans); transition: border-color 0.15s;
+  }
+  .modal-input:focus { border-color: var(--primary); }
+  .modal-select {
+    width: 100%; padding: 9px 12px;
+    background: var(--bg3); border: 1px solid var(--border2);
+    border-radius: var(--radius); color: var(--text); font-size: 13px;
+    outline: none; font-family: var(--sans); cursor: pointer;
+    appearance: none;
+  }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+  .modal-info { background: var(--bg3); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 14px; font-size: 12px; color: var(--text2); line-height: 1.6; }
+  .modal-info strong { color: var(--text); }
+
+  /* ── Toast ──────────────────────────────────────────────────── */
+  #toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 300;
+    display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+  }
+  .toast-item {
+    padding: 10px 16px; border-radius: 8px;
+    font-size: 13px; font-weight: 500;
+    animation: toast-in 0.25s ease; max-width: 320px;
+  }
+  .toast-item.success { background: var(--green-dim); border: 1px solid rgba(34,197,94,0.3); color: var(--green); }
+  .toast-item.error   { background: var(--red-dim);   border: 1px solid rgba(239,68,68,0.3);  color: var(--red); }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  /* ── Report detail expand ─────────────────────────────────── */
+  .report-detail {
+    background: var(--bg3); border-radius: var(--radius);
+    padding: 10px 14px; font-size: 12px; color: var(--text2); line-height: 1.6;
+    margin-top: 6px;
+  }
+  .report-detail strong { color: var(--text); }
+
+  /* ── Scrollbar ──────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── Pagination ─────────────────────────────────────────────── */
+  .pagination {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px; color: var(--text2);
+  }
+  .pagination-btns { display: flex; gap: 6px; }
+  .page-btn {
+    padding: 4px 10px; border-radius: 6px;
+    border: 1px solid var(--border2); background: var(--bg3);
+    color: var(--text2); font-size: 12px; cursor: pointer;
+    font-family: var(--sans); transition: all 0.12s;
+  }
+  .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .page-btn:not(:disabled):hover { border-color: var(--primary); color: var(--primary); }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════ AUTH GATE ═══════════════════════════ -->
+<div id="auth-gate">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-mark">N</div>
+      <span class="auth-logo-text">Ningi</span>
+      <span class="auth-logo-badge">Admin</span>
+    </div>
+    <div class="auth-title">Mission Control</div>
+    <div class="auth-sub">Enter your admin password to access the Ningi dashboard.</div>
+
+    <label class="field-label">Password</label>
+    <input class="field-input" id="admin-pass" type="password" placeholder="Admin password" autocomplete="current-password" onkeydown="if(event.key==='Enter')connect()" />
+
+    <button class="auth-btn" onclick="connect()">Enter →</button>
+    <div class="auth-error" id="auth-error"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ SHELL ═══════════════════════════════ -->
+<div id="shell">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-mark">N</div>
+      <div>
+        <div class="sidebar-logo-name">Ningi</div>
+        <div class="sidebar-logo-tag">Admin</div>
+      </div>
+    </div>
+
+    <div class="sidebar-section-label">Dashboard</div>
+    <div class="sidebar-nav">
+      <button class="nav-item active" onclick="showPage('overview')" id="nav-overview">
+        <span class="nav-icon">◈</span> Overview
+      </button>
+    </div>
+
+    <div class="sidebar-section-label">Moderation</div>
+    <div class="sidebar-nav">
+      <button class="nav-item" onclick="showPage('reports')" id="nav-reports">
+        <span class="nav-icon">⚑</span> Reports
+        <span class="nav-badge" id="reports-badge" style="display:none">0</span>
+      </button>
+      <button class="nav-item" onclick="showPage('users')" id="nav-users">
+        <span class="nav-icon">◉</span> Users
+      </button>
+      <!-- <button class="nav-item" onclick="showPage('messages')" id="nav-messages">
+        <span class="nav-icon">◎</span> Messages
+      </button> -->
+    </div>
+
+    <div class="sidebar-bottom">
+      <div class="sidebar-user">
+        <div class="sidebar-avatar" id="sidebar-avatar">A</div>
+        <div class="sidebar-user-name" id="sidebar-username">Admin</div>
+        <button class="sidebar-logout" onclick="logout()" title="Disconnect">⏻</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+
+    <!-- ── OVERVIEW ── -->
+    <div id="page-overview" class="page active">
+      <div class="topbar">
+        <div>
+          <div class="topbar-title">Overview</div>
+          <div class="topbar-sub" id="overview-updated">—</div>
+        </div>
+        <div class="topbar-right">
+          <button class="refresh-btn" onclick="loadOverview()">↻ Refresh</button>
+        </div>
+      </div>
+      <div class="content">
+        <div class="stats-grid" id="stats-grid">
+          <div class="stat-card"><div class="stat-label">Total Users</div><div class="stat-value mono" id="stat-users">—</div><div class="stat-sub">registered accounts</div></div>
+          <div class="stat-card warn"><div class="stat-label">Pending Reports</div><div class="stat-value mono" id="stat-reports">—</div><div class="stat-sub">awaiting review</div></div>
+          <div class="stat-card danger"><div class="stat-label">Banned Users</div><div class="stat-value mono" id="stat-banned">—</div><div class="stat-sub">permanently banned</div></div>
+          <div class="stat-card"><div class="stat-label">Total Messages</div><div class="stat-value mono" id="stat-messages">—</div><div class="stat-sub">all rooms combined</div></div>
+        </div>
+
+        <div class="section-header"><div class="section-title">Recent Reports</div><button class="btn btn-ghost" onclick="showPage('reports')">View all →</button></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Type</th><th>Reporter</th><th>Target</th><th>Reason</th><th>Status</th><th>When</th><th>Action</th></tr></thead>
+            <tbody id="recent-reports-body"><tr class="loading-row"><td colspan="7">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── REPORTS ── -->
+    <div id="page-reports" class="page">
+      <div class="topbar">
+        <div>
+          <div class="topbar-title">Reports</div>
+          <div class="topbar-sub">Review and act on user-submitted reports</div>
+        </div>
+        <div class="topbar-right">
+          <button class="refresh-btn" onclick="loadReports()">↻ Refresh</button>
+        </div>
+      </div>
+      <div class="content">
+        <div class="section-header">
+          <div class="filter-tabs">
+            <button class="filter-tab active" onclick="setReportFilter('pending')">Pending</button>
+            <button class="filter-tab" onclick="setReportFilter('reviewed')">Reviewed</button>
+            <button class="filter-tab" onclick="setReportFilter('resolved')">Resolved</button>
+            <button class="filter-tab" onclick="setReportFilter('dismissed')">Dismissed</button>
+            <button class="filter-tab" onclick="setReportFilter('all')">All</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Type</th><th>Reporter</th><th>Target</th><th>Reason</th><th>Details</th><th>Status</th><th>Filed</th><th>Actions</th></tr></thead>
+            <tbody id="reports-body"><tr class="loading-row"><td colspan="8">Loading…</td></tr></tbody>
+          </table>
+          <div class="pagination">
+            <span id="reports-pagination-info">—</span>
+            <div class="pagination-btns">
+              <button class="page-btn" id="reports-prev" onclick="reportsPage(-1)">← Prev</button>
+              <button class="page-btn" id="reports-next" onclick="reportsPage(1)">Next →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── USERS ── -->
+    <div id="page-users" class="page">
+      <div class="topbar">
+        <div>
+          <div class="topbar-title">Users</div>
+          <div class="topbar-sub">Manage accounts, bans and timeouts</div>
+        </div>
+        <div class="topbar-right">
+          <input class="search-input" id="users-search" placeholder="Search username or email…" oninput="searchUsers()" />
+          <button class="refresh-btn" onclick="loadUsers()">↻ Refresh</button>
+        </div>
+      </div>
+      <div class="content">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Username</th><th>Email</th><th>Course</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead>
+            <tbody id="users-body"><tr class="loading-row"><td colspan="6">Loading…</td></tr></tbody>
+          </table>
+          <div class="pagination">
+            <span id="users-pagination-info">—</span>
+            <div class="pagination-btns">
+              <button class="page-btn" id="users-prev" onclick="usersPage(-1)">← Prev</button>
+              <button class="page-btn" id="users-next" onclick="usersPage(1)">Next →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── MESSAGES ── -->
+    <div id="page-messages" class="page">
+      <div class="topbar">
+        <div>
+          <div class="topbar-title">Messages</div>
+          <div class="topbar-sub">Browse and delete chat messages</div>
+        </div>
+        <div class="topbar-right">
+          <input class="search-input" id="messages-search" placeholder="Search content or username…" oninput="searchMessages()" />
+          <button class="refresh-btn" onclick="loadMessages()">↻ Refresh</button>
+        </div>
+      </div>
+      <div class="content">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>User</th><th>Content</th><th>Room</th><th>Status</th><th>Sent</th><th>Actions</th></tr></thead>
+            <tbody id="messages-body"><tr class="loading-row"><td colspan="6">Loading…</td></tr></tbody>
+          </table>
+          <div class="pagination">
+            <span id="messages-pagination-info">—</span>
+            <div class="pagination-btns">
+              <button class="page-btn" id="messages-prev" onclick="messagesPage(-1)">← Prev</button>
+              <button class="page-btn" id="messages-next" onclick="messagesPage(1)">Next →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /shell -->
+
+<!-- ═════════════════════════ MODAL ═════════════════════════════════ -->
+<div class="modal-backdrop" id="modal-backdrop" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title" id="modal-title">Action</div>
+    <div id="modal-body"></div>
+    <div class="modal-actions" id="modal-actions"></div>
+  </div>
+</div>
+
+<!-- ═════════════════════════ TOAST ══════════════════════════════════ -->
+<div id="toast"></div>
+
+<script>
+// ═════════════════════════════════════════════════════════════════
+// CONFIG — edit these three values before deploying
+// ═════════════════════════════════════════════════════════════════
+const SUPABASE_URL    = 'https://iecongygvcachqbmsjja.supabase.co'
+const SUPABASE_KEY    = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllY29uZ3lndmNhY2hxYm1zamphIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3ODU3NzY5NywiZXhwIjoyMDk0MTUzNjk3fQ.p_pufeRcBAuq55TJErx50LM5A6de8c5gWxxw3P83J-U'   // Supabase → Settings → API → service_role
+const ADMIN_PASSWORD  = 'NingiAdmin13#'      // shared password for your team
+const PAGE_SIZE = 25
+
+// ═════════════════════════════════════════════════════════════════
+// STATE
+// ═════════════════════════════════════════════════════════════════
+let sb = null
+let reportFilter = 'pending'
+let reportOffset = 0
+let userOffset   = 0
+let msgOffset    = 0
+let userSearch   = ''
+let msgSearch    = ''
+
+// ═════════════════════════════════════════════════════════════════
+// AUTH
+// ═════════════════════════════════════════════════════════════════
+async function connect() {
+  const pass = document.getElementById('admin-pass').value
+  if (pass !== ADMIN_PASSWORD) return showAuthError('Incorrect password.')
+
+  try {
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+    const { error } = await sb.from('profiles').select('id').limit(1)
+    if (error) throw error
+
+    sessionStorage.setItem('ningi_admin_authed', '1')
+    document.getElementById('auth-gate').style.display = 'none'
+    document.getElementById('shell').classList.add('visible')
+    loadAll()
+  } catch (e) {
+    showAuthError('Connection failed: ' + e.message)
+  }
+}
+
+function showAuthError(msg) {
+  const el = document.getElementById('auth-error')
+  el.textContent = msg
+  el.style.display = 'block'
+}
+
+function logout() {
+  sessionStorage.removeItem('ningi_admin_authed')
+  sb = null
+  document.getElementById('auth-gate').style.display = 'flex'
+  document.getElementById('shell').classList.remove('visible')
+}
+
+// Auto-restore session
+window.addEventListener('DOMContentLoaded', () => {
+  if (sessionStorage.getItem('ningi_admin_authed') === '1') {
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+    document.getElementById('auth-gate').style.display = 'none'
+    document.getElementById('shell').classList.add('visible')
+    loadAll()
+  }
+})
+
+// ═════════════════════════════════════════════════════════════════
+// NAVIGATION
+// ═════════════════════════════════════════════════════════════════
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'))
+  document.getElementById('page-' + name).classList.add('active')
+  document.getElementById('nav-' + name).classList.add('active')
+  if (name === 'overview') loadOverview()
+  if (name === 'reports')  { reportOffset = 0; loadReports() }
+  if (name === 'users')    { userOffset = 0; loadUsers() }
+  if (name === 'messages') { msgOffset = 0; loadMessages() }
+}
+
+function loadAll() {
+  loadOverview()
+  loadPendingCount()
+}
+
+// ═════════════════════════════════════════════════════════════════
+// OVERVIEW
+// ═════════════════════════════════════════════════════════════════
+async function loadOverview() {
+  const [users, reports, banned, messages, recentReports] = await Promise.all([
+    sb.from('profiles').select('id', { count: 'exact', head: true }),
+    sb.from('reports').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    sb.from('profiles').select('id', { count: 'exact', head: true }).eq('is_banned', true),
+    sb.from('messages').select('id', { count: 'exact', head: true }).eq('is_deleted', false),
+    sb.from('reports').select('*, reporter:reporter_id(username)').order('created_at', { ascending: false }).limit(5)
+  ])
+  document.getElementById('stat-users').textContent    = (users.count ?? '—').toLocaleString()
+  document.getElementById('stat-reports').textContent  = (reports.count ?? '—').toLocaleString()
+  document.getElementById('stat-banned').textContent   = (banned.count ?? '—').toLocaleString()
+  document.getElementById('stat-messages').textContent = (messages.count ?? '—').toLocaleString()
+  document.getElementById('overview-updated').textContent = 'Updated ' + new Date().toLocaleTimeString()
+
+  const badge = document.getElementById('reports-badge')
+  if (reports.count > 0) { badge.textContent = reports.count; badge.style.display = 'flex' }
+  else badge.style.display = 'none'
+
+  const tbody = document.getElementById('recent-reports-body')
+  const rows = recentReports.data ?? []
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">No reports yet</td></tr>'; return }
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td><span class="badge badge-${r.type}">${r.type}</span></td>
+      <td class="mono text-muted">${r.reporter?.username ?? '—'}</td>
+      <td class="mono">${r.target_id.slice(0,8)+'…'}</td>
+      <td>${formatReason(r.reason)}</td>
+      <td><span class="badge badge-${r.status}">${r.status}</span></td>
+      <td class="text-muted text-sm">${timeAgo(r.created_at)}</td>
+      <td><div class="actions">${reportActions(r)}</div></td>
+    </tr>`).join('')
+}
+
+// ═════════════════════════════════════════════════════════════════
+// REPORTS
+// ═════════════════════════════════════════════════════════════════
+async function loadPendingCount() {
+  const { count } = await sb.from('reports').select('id', { count: 'exact', head: true }).eq('status', 'pending')
+  const badge = document.getElementById('reports-badge')
+  if (count > 0) { badge.textContent = count; badge.style.display = 'flex' } else badge.style.display = 'none'
+}
+
+function setReportFilter(f) {
+  reportFilter = f; reportOffset = 0
+  document.querySelectorAll('.filter-tab').forEach(t => {
+    t.classList.toggle('active', t.textContent.toLowerCase() === f || (f === 'all' && t.textContent === 'All'))
+  })
+  loadReports()
+}
+
+async function loadReports() {
+  const tbody = document.getElementById('reports-body')
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="8">Loading…</td></tr>'
+
+  let q = sb.from('reports')
+    .select('*, reporter:reporter_id(username, email)', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(reportOffset, reportOffset + PAGE_SIZE - 1)
+
+  if (reportFilter !== 'all') q = q.eq('status', reportFilter)
+
+  const { data, count, error } = await q
+  if (error) { tbody.innerHTML = `<tr><td colspan="8" style="color:var(--red);padding:20px">${error.message}</td></tr>`; return }
+
+  // Batch-fetch usernames for user-type reports
+  const userTargetIds = [...new Set((data || []).filter(r => r.type === 'user').map(r => r.target_id))]
+  const targetMap = {}
+  if (userTargetIds.length) {
+    const { data: targets } = await sb.from('profiles').select('id, username').in('id', userTargetIds)
+    ;(targets || []).forEach(t => { targetMap[t.id] = t.username })
+  }
+
+  document.getElementById('reports-pagination-info').textContent =
+    `${reportOffset + 1}–${Math.min(reportOffset + PAGE_SIZE, count)} of ${count}`
+  document.getElementById('reports-prev').disabled = reportOffset === 0
+  document.getElementById('reports-next').disabled = reportOffset + PAGE_SIZE >= count
+
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:32px">No reports</td></tr>'; return }
+
+  tbody.innerHTML = data.map(r => `
+    <tr>
+      <td><span class="badge badge-${r.type}">${r.type}</span></td>
+      <td class="mono text-sm">${r.reporter?.username ?? '—'}</td>
+      <td class="mono text-sm">${r.type === 'user' ? (targetMap[r.target_id] ?? r.target_id.slice(0,12)+'…') : r.target_id.slice(0,12)+'…'}</td>
+      <td><span style="font-size:12px">${formatReason(r.reason)}</span></td>
+      <td><span class="truncate text-muted text-sm" style="max-width:140px" title="${escHtml(r.details)}">${r.details || '—'}</span></td>
+      <td><span class="badge badge-${r.status}">${r.status}</span></td>
+      <td class="text-muted text-sm">${timeAgo(r.created_at)}</td>
+      <td><div class="actions">${reportActions(r)}</div></td>
+    </tr>`).join('')
+}
+
+function reportActions(r) {
+  const done = r.status === 'resolved' || r.status === 'dismissed'
+  const btns = []
+  if (!done) {
+    if (r.type === 'user')    btns.push(`<button class="btn btn-red" onclick="openBanModal('${r.target_id}','${r.id}')">Ban</button>`)
+    if (r.type === 'user')    btns.push(`<button class="btn btn-amber" onclick="openTimeoutModal('${r.target_id}','${r.id}')">Timeout</button>`)
+    if (r.type === 'message') btns.push(`<button class="btn btn-red" onclick="deleteMessage('${r.target_id}','${r.id}')">Delete Msg</button>`)
+    btns.push(`<button class="btn btn-ghost" onclick="dismissReport('${r.id}')">Dismiss</button>`)
+    btns.push(`<button class="btn btn-green" onclick="resolveReport('${r.id}')">Resolve</button>`)
+  } else {
+    btns.push(`<span style="color:var(--text3);font-size:11px">${r.status}</span>`)
+  }
+  return btns.join('')
+}
+
+function reportsPage(dir) { reportOffset = Math.max(0, reportOffset + dir * PAGE_SIZE); loadReports() }
+
+// ═════════════════════════════════════════════════════════════════
+// USERS
+// ═════════════════════════════════════════════════════════════════
+let allUsers = []
+let filteredUsers = []
+
+async function loadUsers() {
+  const tbody = document.getElementById('users-body')
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="6">Loading…</td></tr>'
+
+  const { data, count, error } = await sb.from('profiles')
+    .select('*', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(userOffset, userOffset + PAGE_SIZE - 1)
+
+  if (error) { tbody.innerHTML = `<tr><td colspan="6" style="color:var(--red);padding:20px">${error.message}</td></tr>`; return }
+
+  allUsers = data ?? []
+  document.getElementById('users-pagination-info').textContent =
+    `${userOffset + 1}–${Math.min(userOffset + PAGE_SIZE, count)} of ${count}`
+  document.getElementById('users-prev').disabled = userOffset === 0
+  document.getElementById('users-next').disabled = userOffset + PAGE_SIZE >= count
+
+  renderUsers(allUsers)
+}
+
+function searchUsers() {
+  userSearch = document.getElementById('users-search').value.toLowerCase()
+  const filtered = allUsers.filter(u =>
+    u.username?.toLowerCase().includes(userSearch) ||
+    u.email?.toLowerCase().includes(userSearch)
+  )
+  renderUsers(filtered)
+}
+
+function renderUsers(users) {
+  const tbody = document.getElementById('users-body')
+  if (!users.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:32px">No users found</td></tr>'; return }
+
+  tbody.innerHTML = users.map(u => {
+    const status = u.is_banned ? 'banned' : (u.timeout_until && new Date(u.timeout_until) > new Date()) ? 'timeout' : 'active'
+    const statusLabel = u.is_banned ? 'Banned' : status === 'timeout' ? 'Timed out' : 'Active'
+    return `<tr>
+      <td><span class="mono" style="font-weight:500">@${escHtml(u.username)}</span>${u.is_admin ? ' <span class="badge" style="background:var(--primary-dim);color:var(--primary)">admin</span>' : ''}</td>
+      <td class="text-muted text-sm mono">${escHtml(u.email)}</td>
+      <td class="text-muted text-sm">${escHtml(u.course) || '—'}</td>
+      <td><span class="badge badge-${status}">${statusLabel}${status === 'timeout' ? ' until ' + new Date(u.timeout_until).toLocaleDateString() : ''}</span></td>
+      <td class="text-muted text-sm">${new Date(u.created_at).toLocaleDateString()}</td>
+      <td><div class="actions">
+        ${u.is_banned
+          ? `<button class="btn btn-green" onclick="unbanUser('${u.id}')">Unban</button>`
+          : `<button class="btn btn-red" onclick="openBanModal('${u.id}',null)">Ban</button>
+             <button class="btn btn-amber" onclick="openTimeoutModal('${u.id}',null)">Timeout</button>`
+        }
+        <button class="btn btn-ghost" onclick="viewUserMessages('${u.id}','${escHtml(u.username)}')">Messages</button>
+      </div></td>
+    </tr>`
+  }).join('')
+}
+
+function usersPage(dir) { userOffset = Math.max(0, userOffset + dir * PAGE_SIZE); loadUsers() }
+
+function viewUserMessages(userId, username) {
+  showPage('messages')
+  document.getElementById('messages-search').value = username
+  msgSearch = username
+  msgOffset = 0
+  loadMessages()
+}
+
+// ═════════════════════════════════════════════════════════════════
+// MESSAGES
+// ═════════════════════════════════════════════════════════════════
+async function loadMessages() {
+  const tbody = document.getElementById('messages-body')
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="6">Loading…</td></tr>'
+
+  let q = sb.from('messages')
+    .select('*', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(msgOffset, msgOffset + PAGE_SIZE - 1)
+
+  if (msgSearch) q = q.or(`content.ilike.%${msgSearch}%,username.ilike.%${msgSearch}%`)
+
+  const { data, count, error } = await q
+  if (error) { tbody.innerHTML = `<tr><td colspan="6" style="color:var(--red);padding:20px">${error.message}</td></tr>`; return }
+
+  document.getElementById('messages-pagination-info').textContent =
+    `${msgOffset + 1}–${Math.min(msgOffset + PAGE_SIZE, count)} of ${count}`
+  document.getElementById('messages-prev').disabled = msgOffset === 0
+  document.getElementById('messages-next').disabled = msgOffset + PAGE_SIZE >= count
+
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:32px">No messages found</td></tr>'; return }
+
+  tbody.innerHTML = data.map(m => `
+    <tr>
+      <td class="mono text-sm">@${escHtml(m.username)}</td>
+      <td><span class="truncate" style="max-width:240px;font-size:12px;color:${m.is_deleted ? 'var(--text3)' : 'var(--text)'}" title="${escHtml(m.content)}">${m.is_deleted ? '🚫 deleted' : escHtml(m.content)}</span></td>
+      <td class="text-muted mono text-sm"><span class="truncate" style="max-width:160px" title="${escHtml(m.room_url)}">${escHtml(m.room_url)}</span></td>
+      <td>${m.is_deleted ? '<span class="badge badge-dismissed">deleted</span>' : '<span class="badge badge-active">visible</span>'}</td>
+      <td class="text-muted text-sm">${timeAgo(m.created_at)}</td>
+      <td><div class="actions">
+        ${!m.is_deleted
+          ? `<button class="btn btn-red" onclick="deleteMessage('${m.id}',null)">Delete</button>`
+          : `<button class="btn btn-ghost" onclick="restoreMessage('${m.id}')">Restore</button>`
+        }
+      </div></td>
+    </tr>`).join('')
+}
+
+function searchMessages() { msgSearch = document.getElementById('messages-search').value; msgOffset = 0; loadMessages() }
+function messagesPage(dir) { msgOffset = Math.max(0, msgOffset + dir * PAGE_SIZE); loadMessages() }
+
+// ═════════════════════════════════════════════════════════════════
+// MODERATION ACTIONS
+// ═════════════════════════════════════════════════════════════════
+function openBanModal(userId, reportId) {
+  document.getElementById('modal-title').textContent = 'Ban User'
+  document.getElementById('modal-body').innerHTML = `
+    <div class="modal-info">This will permanently ban the user from Ningi. They will not be able to send messages.</div>
+    <div class="modal-field">
+      <label class="modal-label">Ban Reason</label>
+      <input class="modal-input" id="ban-reason" placeholder="e.g. Repeated harassment" />
+    </div>`
+  document.getElementById('modal-actions').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-red" onclick="banUser('${userId}','${reportId}')">Ban User</button>`
+  openModal()
+}
+
+async function banUser(userId, reportId) {
+  const reason = document.getElementById('ban-reason').value.trim() || 'Policy violation'
+  const { error } = await sb.from('profiles').update({ is_banned: true, banned_at: new Date().toISOString(), ban_reason: reason }).eq('id', userId)
+  if (error) return toast('Error: ' + error.message, 'error')
+  if (reportId && reportId !== 'null') await resolveReport(reportId, true)
+  toast('User banned', 'success')
+  closeModal(); loadUsers(); loadPendingCount()
+}
+
+async function unbanUser(userId) {
+  const { error } = await sb.from('profiles').update({ is_banned: false, banned_at: null, ban_reason: '' }).eq('id', userId)
+  if (error) return toast('Error: ' + error.message, 'error')
+  toast('User unbanned', 'success'); loadUsers()
+}
+
+function openTimeoutModal(userId, reportId) {
+  document.getElementById('modal-title').textContent = 'Timeout User'
+  document.getElementById('modal-body').innerHTML = `
+    <div class="modal-info">The user will be unable to send messages until the timeout expires.</div>
+    <div class="modal-field">
+      <label class="modal-label">Duration</label>
+      <select class="modal-select" id="timeout-duration">
+        <option value="1">1 hour</option>
+        <option value="6">6 hours</option>
+        <option value="24" selected>24 hours</option>
+        <option value="72">3 days</option>
+        <option value="168">7 days</option>
+        <option value="720">30 days</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">Reason</label>
+      <input class="modal-input" id="timeout-reason" placeholder="e.g. Spam in chat room" />
+    </div>`
+  document.getElementById('modal-actions').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-amber" onclick="timeoutUser('${userId}','${reportId}')">Apply Timeout</button>`
+  openModal()
+}
+
+async function timeoutUser(userId, reportId) {
+  const hours  = parseInt(document.getElementById('timeout-duration').value)
+  const reason = document.getElementById('timeout-reason').value.trim() || 'Policy violation'
+  const until  = new Date(Date.now() + hours * 3600 * 1000).toISOString()
+  const { error } = await sb.from('profiles').update({ timeout_until: until, timeout_reason: reason }).eq('id', userId)
+  if (error) return toast('Error: ' + error.message, 'error')
+  if (reportId && reportId !== 'null') await resolveReport(reportId, true)
+  toast(`User timed out for ${hours}h`, 'success')
+  closeModal(); loadUsers(); loadPendingCount()
+}
+
+async function deleteMessage(messageId, reportId) {
+  const { error } = await sb.from('messages').update({ is_deleted: true }).eq('id', messageId)
+  if (error) return toast('Error: ' + error.message, 'error')
+  if (reportId && reportId !== 'null') await resolveReport(reportId, true)
+  toast('Message deleted', 'success')
+  loadMessages(); loadPendingCount()
+}
+
+async function restoreMessage(messageId) {
+  const { error } = await sb.from('messages').update({ is_deleted: false }).eq('id', messageId)
+  if (error) return toast('Error: ' + error.message, 'error')
+  toast('Message restored', 'success'); loadMessages()
+}
+
+async function resolveReport(reportId, silent = false) {
+  await sb.from('reports').update({ status: 'resolved', reviewed_at: new Date().toISOString() }).eq('id', reportId)
+  if (!silent) { toast('Report resolved', 'success'); loadReports(); loadPendingCount() }
+}
+
+async function dismissReport(reportId) {
+  const { error } = await sb.from('reports').update({ status: 'dismissed', reviewed_at: new Date().toISOString() }).eq('id', reportId)
+  if (error) return toast('Error: ' + error.message, 'error')
+  toast('Report dismissed', 'success'); loadReports(); loadPendingCount()
+}
+
+// ═════════════════════════════════════════════════════════════════
+// MODAL
+// ═════════════════════════════════════════════════════════════════
+function openModal() { document.getElementById('modal-backdrop').classList.add('open') }
+function closeModal(e) {
+  if (e && e.target !== document.getElementById('modal-backdrop')) return
+  document.getElementById('modal-backdrop').classList.remove('open')
+}
+
+// ═════════════════════════════════════════════════════════════════
+// TOAST
+// ═════════════════════════════════════════════════════════════════
+function toast(msg, type = 'success') {
+  const container = document.getElementById('toast')
+  const el = document.createElement('div')
+  el.className = 'toast-item ' + type
+  el.textContent = msg
+  container.appendChild(el)
+  setTimeout(() => el.remove(), 3500)
+}
+
+// ═════════════════════════════════════════════════════════════════
+// HELPERS
+// ═════════════════════════════════════════════════════════════════
+function timeAgo(iso) {
+  if (!iso) return '—'
+  const diff = (Date.now() - new Date(iso)) / 1000
+  if (diff < 60)    return 'just now'
+  if (diff < 3600)  return Math.floor(diff / 60) + 'm ago'
+  if (diff < 86400) return Math.floor(diff / 3600) + 'h ago'
+  return Math.floor(diff / 86400) + 'd ago'
+}
+
+function formatReason(r) {
+  return (r || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
+function escHtml(str) {
+  if (!str) return ''
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+}
+</script>
+</body>
+</html>
